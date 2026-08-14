@@ -10,6 +10,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "wishlist")
@@ -63,7 +64,14 @@ interface RecentComparisonDao {
     suspend fun removeDuplicateRecent(queryOrUrl: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertRecent(item: RecentComparisonEntity)
+    suspend fun insertRecentRaw(item: RecentComparisonEntity)
+
+    @Transaction
+    suspend fun insertRecent(item: RecentComparisonEntity) {
+        // Keep only the latest entry for the same search/query, ignoring case and spaces.
+        removeDuplicateRecent(item.queryOrUrl)
+        insertRecentRaw(item)
+    }
 
     @Query("DELETE FROM recent_comparisons")
     suspend fun clearRecents()

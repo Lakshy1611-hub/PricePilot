@@ -51,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,7 +68,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ui.viewmodel.PricePilotViewModel
 
-private fun roundedClip(shape: androidx.compose.ui.graphics.Shape): Modifier = Modifier.graphicsLayer { this.shape = shape; clip = true }
+private fun roundedClip(shape: androidx.compose.ui.graphics.Shape): Modifier = Modifier.clip(shape)
 
 @Composable
 fun HomeScreen(
@@ -84,7 +85,7 @@ fun HomeScreen(
     val transition = rememberInfiniteTransition(label = "pricepilotHero")
     val floatY by transition.animateFloat(-8f, 8f, infiniteRepeatable(tween(2200), RepeatMode.Reverse), label = "float")
     val pulse by transition.animateFloat(.96f, 1.04f, infiniteRepeatable(tween(1500), RepeatMode.Reverse), label = "pulse")
-    androidx.compose.runtime.LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(Unit) { visible = true }
 
     fun search() { if (query.isNotBlank()) { viewModel.searchProducts(query.trim()); onNavigateToSearch() } }
     fun compare() { if (query.isNotBlank()) { viewModel.compareProduct(query.trim()); onNavigateToResults() } }
@@ -111,11 +112,11 @@ fun HomeScreen(
                     }
                     Spacer(Modifier.height(16.dp))
                     Box(Modifier.fillMaxWidth().height(220.dp).then(roundedClip(RoundedCornerShape(30.dp))).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primaryContainer))).padding(22.dp)) {
-                        Box(Modifier.size(150.dp).offset(x = 190.dp, y = (-45).dp + floatY.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .12f)))
-                        Box(Modifier.size(95.dp).offset(x = 235.dp, y = 125.dp - floatY.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .10f)))
+                        Box(Modifier.size(150.dp).offset(x = 190.dp, y = (-45).dp + floatY.dp).then(roundedClip(CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .12f)))
+                        Box(Modifier.size(95.dp).offset(x = 235.dp, y = 125.dp - floatY.dp).then(roundedClip(CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .10f)))
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(44.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.onPrimary) }
+                                Box(Modifier.size(44.dp).then(roundedClip(CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.onPrimary) }
                                 Spacer(Modifier.width(10.dp)); Text("LIVE DEAL HUNT", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold)
                             }
                             Spacer(Modifier.height(16.dp))
@@ -147,7 +148,7 @@ fun HomeScreen(
                         itemsIndexed(stores) { _, store ->
                             Card(shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(3.dp)) {
                                 Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    AsyncImage(model = "https://www.google.com/s2/favicons?domain=${store.second}&sz=128", contentDescription = store.first, modifier = Modifier.size(30.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)))
+                                    AsyncImage(model = "https://www.google.com/s2/favicons?domain=${store.second}&sz=128", contentDescription = store.first, modifier = Modifier.size(30.dp).then(roundedClip(CircleShape)))
                                     Spacer(Modifier.width(8.dp)); Text(store.first, fontWeight = FontWeight.Bold)
                                 }
                             }

@@ -18,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
@@ -103,7 +104,7 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun Stat(label: String, value: String, color: androidx.compose.ui.graphics.Color) {
+private fun Stat(label: String, value: String, color: Color) {
     Column { Text(label, style = MaterialTheme.typography.labelSmall); Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = color) }
 }
 
@@ -111,7 +112,9 @@ private fun Stat(label: String, value: String, color: androidx.compose.ui.graphi
 private fun PriceChart(values: List<Double>, progress: Float) {
     val min = values.minOrNull() ?: 0.0
     val max = values.maxOrNull() ?: min + 1.0
-    Canvas(Modifier.fillMaxWidth().height(190.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(18.dp)).padding(12.dp)) {
+    val chartBackground = MaterialTheme.colorScheme.surfaceVariant
+    val chartColor = MaterialTheme.colorScheme.primary
+    Canvas(Modifier.fillMaxWidth().height(190.dp).background(chartBackground, RoundedCornerShape(18.dp)).padding(12.dp)) {
         if (values.size < 2) return@Canvas
         val range = (max - min).takeIf { it > 0 } ?: 1.0
         val usable = size.width
@@ -121,11 +124,11 @@ private fun PriceChart(values: List<Double>, progress: Float) {
             val y = size.height - (((value - min) / range).toFloat() * size.height)
             if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
-        drawPath(path, MaterialTheme.colorScheme.primary.copy(alpha = progress), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f, cap = StrokeCap.Round))
+        drawPath(path, chartColor.copy(alpha = progress), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f, cap = StrokeCap.Round))
         values.forEachIndexed { i, value ->
             val x = i.toFloat() / (values.lastIndex.coerceAtLeast(1)) * usable
             val y = size.height - (((value - min) / range).toFloat() * size.height)
-            drawCircle(MaterialTheme.colorScheme.primary.copy(alpha = progress), 6f, Offset(x, y))
+            drawCircle(chartColor.copy(alpha = progress), 6f, Offset(x, y))
         }
     }
 }

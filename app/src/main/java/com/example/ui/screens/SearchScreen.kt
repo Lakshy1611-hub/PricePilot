@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -25,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,23 @@ private fun storeDomain(name: String): String = when (name.lowercase()) {
     else -> name.lowercase().replace(" ", "") + ".com"
 }
 
+private fun storeSearchUrl(store: String, query: String): String {
+    val q = Uri.encode(query)
+    return when (store.lowercase()) {
+        "amazon" -> "https://www.amazon.in/s?k=$q"
+        "flipkart" -> "https://www.flipkart.com/search?q=$q"
+        "ajio" -> "https://www.ajio.com/search/?text=$q"
+        "meesho" -> "https://www.meesho.com/search?q=$q"
+        "myntra" -> "https://www.myntra.com/$q"
+        "nykaa" -> "https://www.nykaa.com/search/result/?q=$q"
+        "snapdeal" -> "https://www.snapdeal.com/search?keyword=$q"
+        "croma" -> "https://www.croma.com/search/?text=$q"
+        "reliance digital" -> "https://www.reliancedigital.in/search?q=$q"
+        "tata cliq" -> "https://www.tatacliq.com/search/?searchCategory=all&text=$q"
+        else -> "https://www.google.com/search?q=${Uri.encode("$store $query")}" 
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(viewModel: PricePilotViewModel, onNavigateHome: () -> Unit, onNavigateWishlist: () -> Unit, onNavigateSettings: () -> Unit, onNavigateResults: () -> Unit) {
@@ -53,6 +73,7 @@ fun SearchScreen(viewModel: PricePilotViewModel, onNavigateHome: () -> Unit, onN
     var selectedStores by remember { mutableStateOf(setOf<String>()) }
     val searchResults by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val context = LocalContext.current
     val priorityStores = listOf("AJIO", "Amazon", "Flipkart", "Meesho", "Myntra")
     val storeCategories = linkedMapOf("Beauty & Lifestyle" to listOf("Nykaa"), "Marketplaces" to listOf("Snapdeal"), "Electronics" to listOf("Croma", "Reliance Digital", "Tata CLiQ"))
     val visibleResults = searchResults.mapNotNull { product ->
@@ -62,6 +83,7 @@ fun SearchScreen(viewModel: PricePilotViewModel, onNavigateHome: () -> Unit, onN
 
     fun submitSearch() { if (searchQuery.isNotBlank()) viewModel.searchProducts(searchQuery.trim()) }
     fun toggle(store: String) { selectedStores = if (selectedStores.any { it.equals(store, true) }) selectedStores.filterNot { it.equals(store, true) }.toSet() else selectedStores + store }
+    fun openStore(store: String) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(storeSearchUrl(store, searchQuery.trim())))) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Find the best deal", fontWeight = FontWeight.ExtraBold) }, actions = { IconButton(onClick = { showFilters = true }) { Icon(Icons.Default.FilterList, "Filters") } }) },
@@ -86,17 +108,28 @@ fun SearchScreen(viewModel: PricePilotViewModel, onNavigateHome: () -> Unit, onN
             if (isLoading) {
                 PricePilotSearchLoader(query = searchQuery)
             } else if (visibleResults.isEmpty()) {
-                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Icon(Icons.Default.Search, null, Modifier.size(58.dp), tint = MaterialTheme.colorScheme.primary)
+                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(Modifier.height(28.dp))
+                    Icon(Icons.Default.TravelExplore, null, Modifier.size(58.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    Text(if (searchQuery.isBlank()) "Search a product to compare prices." else "No live listing found — but we can still help you find it.", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(if (searchQuery.isBlank()) "Search a product to compare prices." else "We couldn't get a live listing for this query.", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     if (searchQuery.isNotBlank()) {
-                        Spacer(Modifier.height(12.dp))
-                        Text("Try checking the major stores directly for: $searchQuery", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { priorityStores.forEach { store -> AssistChip(onClick = { }, label = { Text(store) }, leadingIcon = { AsyncImage("https://www.google.com/s2/favicons?domain=${storeDomain(store)}&sz=64", store, Modifier.size(18.dp)) }) } }
+                        Text("The product may still be available. Check these stores directly:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                        LazyColumn(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            itemsIndexed(priorityStores) { _, store ->
+                                Card(Modifier.fillMaxWidth().clickable { openStore(store) }, shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+                                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        AsyncImage("https://www.google.com/s2/favicons?domain=${storeDomain(store)}&sz=96", store, Modifier.size(38.dp).clip(RoundedCornerShape(9.dp)))
+                                        Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(store, fontWeight = FontWeight.Bold); Text("Search for \"$searchQuery\"", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                        Icon(Icons.Default.OpenInNew, null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                        if (selectedStores.isNotEmpty()) TextButton(onClick = { selectedStores = emptySet() }) { Text("Show all stores") }
                     }
-                    if (selectedStores.isNotEmpty()) TextButton(onClick = { selectedStores = emptySet() }) { Text("Show all stores") }
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -105,7 +138,7 @@ fun SearchScreen(viewModel: PricePilotViewModel, onNavigateHome: () -> Unit, onN
                         val matchingOffers = pair.second
                         AnimatedVisibility(visible = true, enter = fadeIn(tween(300, index * 45)) + scaleIn(tween(300, index * 45))) {
                             val available = matchingOffers.filter { it.currentPrice > 0 && !it.availability.equals("Out of Stock", true) }
-                            val best = available.minByOrNull { it.currentPrice } ?: matchingOffers.minByOrNull { it.currentPrice }
+                            val best = available.minByOrNull { it.currentPrice } ?: matchingOffers.firstOrNull { it.currentPrice > 0 }
                             Card(Modifier.fillMaxWidth().clickable { viewModel.compareProduct(product.title, selectedStores); onNavigateResults() }, shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(4.dp)) {
                                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                                     AsyncImage(product.imageUrl, product.title, Modifier.size(82.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)

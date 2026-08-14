@@ -35,14 +35,30 @@ jobs:
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Build debug APK
+      - name: Clean previous build outputs
+        run: gradle clean --stacktrace
+
+      - name: Build installable debug APK
         env:
           PRICE_API_BASE_URL: https://pricepilot-api-a7mx.onrender.com
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle :app:assembleDebug --stacktrace --no-daemon
 
-      - name: Upload APK
+      - name: Validate APK package and signature
+        run: |
+          APK=$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          echo "Validating: $APK"
+          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose "$APK"
+          unzip -t "$APK" >/dev/null
+
+      - name: Rename APK for download
+        run: |
+          APK=$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          cp "$APK" PricePilot-v1.1.apk
+
+      - name: Upload verified APK
         uses: actions/upload-artifact@v4
         with:
-          name: PricePilot-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: PricePilot-v1.1-installable-apk
+          path: PricePilot-v1.1.apk
           if-no-files-found: error

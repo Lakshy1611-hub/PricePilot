@@ -1,31 +1,26 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -33,93 +28,65 @@ import com.example.ui.viewmodel.PricePilotViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductDetailsScreen(
-    viewModel: PricePilotViewModel,
-    onBack: () -> Unit
-) {
+fun ProductDetailsScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
     val product = viewModel.currentComparison.collectAsState().value
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Product Details") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+    val context = LocalContext.current
+    Scaffold(topBar = { TopAppBar(title = { Text("Product Details", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onBack) { Icon(Icons.Default.ArrowBack, "Back") } }) }) { padding ->
+        if (product == null) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("No product details available.") }
+        else {
+            val best = product.offers.minBy { it.currentPrice }
+            LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                item {
+                    AnimatedVisibility(true, enter = fadeIn() + slideInVertically { -it / 4 }) {
+                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(6.dp)) {
+                            Column(Modifier.padding(16.dp)) {
+                                AsyncImage(product.imageUrl, product.title, Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Crop)
+                                Spacer(Modifier.height(16.dp))
+                                Text(product.brand, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text(product.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                                Spacer(Modifier.height(10.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(6.dp)); Text("Best live price ₹${best.currentPrice} on ${best.storeName}", fontWeight = FontWeight.Bold) }
+                            }
+                        }
                     }
                 }
-            )
-        }
-    ) { innerPadding ->
-        if (product == null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("No product details available.")
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp)
-            ) {
-                AsyncImage(
-                    model = product.imageUrl,
-                    contentDescription = product.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(260.dp)
-                        .clip(MaterialTheme.shapes.large),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Text(
-                    text = product.brand,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = product.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Specifications & Overview",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = product.description,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Category: ${product.category}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "Model: ${product.model}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
+                item {
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("Best deal right now", fontWeight = FontWeight.ExtraBold)
+                            Text("₹${best.currentPrice}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                            Spacer(Modifier.height(8.dp))
+                            Button(onClick = { if (best.productUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(best.productUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) { Icon(Icons.Default.OpenInNew, null); Spacer(Modifier.width(6.dp)); Text("Open ${best.storeName} deal") }
+                        }
+                    }
+                }
+                item { Text("All live offers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold) }
+                itemsIndexed(product.offers.sortedBy { it.currentPrice }) { index, offer ->
+                    AnimatedVisibility(true, enter = fadeIn(tween = androidx.compose.animation.core.tween(350, index * 45)) + slideInVertically(tween = androidx.compose.animation.core.tween(350, index * 45)) { it / 5 }) {
+                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                                AsyncImage("https://www.google.com/s2/favicons?domain=${offer.storeName.lowercase().replace(" ", "")}.com&sz=128", offer.storeName, Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)))
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(offer.storeName, fontWeight = FontWeight.ExtraBold)
+                                    Text("₹${offer.currentPrice} • ${offer.discount}% OFF", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Text(offer.availability, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                OutlinedButton(onClick = { if (offer.productUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(offer.productUrl))) }, shape = RoundedCornerShape(13.dp)) { Text("Open") }
+                            }
+                        }
+                    }
+                }
+                item {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                            Spacer(Modifier.height(8.dp))
+                            Text(product.description.ifBlank { "No description was provided by the live price source." }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(10.dp))
+                            Text("Category: ${product.category.ifBlank { "Not provided" }}")
+                            Text("Model: ${product.model.ifBlank { "Not provided" }}")
+                        }
                     }
                 }
             }

@@ -9,12 +9,13 @@ import com.example.database.WishlistEntity
 import com.example.model.PriceHistoryPoint
 import com.example.model.ProductDetails
 import com.example.model.ProductOffer
-import com.example.network.PriceApiFactory
 import com.example.network.LiveProductDto
+import com.example.network.PriceApiFactory
+import com.example.network.PriceResponseParser
 import com.example.repository.PricePilotRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -62,19 +63,24 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val api = priceApi ?: error("Live price API is not configured")
-                val response = api.search(queryOrUrl.trim())
-                val product = response.products
-                    .map { it.toProductDetails() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { products -> products.maxByOrNull { it.offers.size } }
+                val products = fetchLiveProducts(queryOrUrl.trim())
+                val grouped = groupProducts(products)
+                val product = grouped
+                    .maxByOrNull { it.offers.size }
                     ?: error("No live offers were found for this product")
 
                 _currentComparison.value = product
                 val cheapest = product.offers.minBy { it.currentPrice }
-                localRepository.addRecent(queryOrUrl, product.title, cheapest.currentPrice, cheapest.storeName, product.imageUrl)
+                localRepository.addRecent(
+                    queryOrUrl,
+                    product.title,
+                    cheapest.currentPrice,
+                    cheapest.storeName,
+                    product.imageUrl
+                )
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Couldn't load live prices. Please try again."
+                _currentComparison.value = null
             } finally {
                 _isLoading.value = false
             }
@@ -84,21 +90,100 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
     fun searchProducts(query: String) {
         if (query.isBlank()) {
             _searchResults.value = emptyList()
+            _errorMessage.value = null
             return
         }
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val api = priceApi ?: error("Live price API is not configured")
-                _searchResults.value = api.search(query.trim()).products.map { it.toProductDetails() }
+                val products = fetchLiveProducts(query.trim())
+                _searchResults.value = groupProducts(products)
             } catch (e: Exception) {
+                _searchResults.value = emptyList()
                 _errorMessage.value = e.message ?: "Search failed. Please try again."
             } finally {
                 _isLoading.value = false
             }
         }
     }
+
+    private suspend fun fetchLiveProducts(query: String): List<LiveProductDto> {
+        val api = priceApi ?: error("Live price API is not configured")
+        val responseBody = api.search(query).string()
+        if (responseBody.isBlank()) error("The price server returned an empty response")
+        return PriceResponseParser.parse(responseBody)
+            .filter { it.currentPrice > 0 && it.productTitle.isNotBlank() }
+            .distinctBy { "${it.storeName}|${it.productTitle}|${it.currentPrice}|${it.productUrl}" }
+    }
+
+    private fun groupProducts(products: List<LiveProductDto>): List<ProductDetails> {
+        if (products.isEmpty()) return emptyList()
+
+        val groups = mutableListOf<MutableList<LiveProductDto>>()
+        products.forEach { product ->
+            val existing = groups.firstOrNull { group ->
+                areSameProduct(group.first(), product)
+            }
+            if (existing != null) existing += product else groups += mutableListOf(product)
+        }
+
+        return groups
+            .map { group ->
+                val representative = group.minByOrNull { it.currentPrice } ?: group.first()
+                ProductDetails(
+                    productId = stableProductId(group),
+                    title = representative.productTitle,
+                    brand = representative.brand,
+                    model = representative.model,
+                    imageUrl = representative.imageUrl.orEmpty(),
+                    category = representative.category,
+                    offers = group.map { it.toProductOffer() }
+                        .distinctBy { "${it.storeName}|${it.productUrl}|${it.currentPrice}" }
+                        .sortedBy { it.currentPrice },
+                    priceHistory = group.flatMap { dto ->
+                        dto.priceHistory.map { PriceHistoryPoint(it.date, it.price, it.storeName) }
+                    }.sortedByDescending { it.date },
+                    description = representative.description
+                )
+            }
+            .filter { it.offers.isNotEmpty() }
+            .sortedWith(compareByDescending<ProductDetails> { it.offers.size }.thenBy { it.offers.minOf { offer -> offer.currentPrice } })
+    }
+
+    private fun areSameProduct(a: LiveProductDto, b: LiveProductDto): Boolean {
+        val aModel = normalize(a.model)
+        val bModel = normalize(b.model)
+        if (aModel.isNotBlank() && bModel.isNotBlank() && aModel == bModel) return true
+
+        val aTitle = normalize(a.productTitle)
+        val bTitle = normalize(b.productTitle)
+        if (aTitle == bTitle) return true
+
+        val aBrand = normalize(a.brand)
+        val bBrand = normalize(b.brand)
+        if (aBrand.isNotBlank() && bBrand.isNotBlank() && aBrand != bBrand) return false
+
+        val aTokens = aTitle.split(' ').filter { it.length > 2 }.toSet()
+        val bTokens = bTitle.split(' ').filter { it.length > 2 }.toSet()
+        if (aTokens.isEmpty() || bTokens.isEmpty()) return false
+        val intersection = aTokens.intersect(bTokens).size
+        val union = aTokens.union(bTokens).size
+        return union > 0 && intersection.toDouble() / union >= 0.65
+    }
+
+    private fun normalize(value: String): String = value
+        .lowercase()
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
+        .replace(Regex("\\s+"), " ")
+
+    private fun stableProductId(group: List<LiveProductDto>): String =
+        group.map { "${normalize(it.brand)}|${normalize(it.model)}|${normalize(it.productTitle)}" }
+            .sorted()
+            .joinToString("||")
+            .hashCode()
+            .toString()
 
     fun toggleWishlist(product: ProductDetails, bestOffer: ProductOffer) {
         viewModelScope.launch {
@@ -127,33 +212,20 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
     fun clearError() { _errorMessage.value = null }
 }
 
-private fun LiveProductDto.toProductDetails(): ProductDetails {
-    val offer = ProductOffer(
-        id = id ?: "${storeName}_${productTitle}_${currentPrice}".hashCode().toString(),
-        storeName = storeName,
-        productTitle = productTitle,
-        productUrl = productUrl,
-        imageUrl = imageUrl.orEmpty(),
-        currentPrice = currentPrice,
-        originalPrice = originalPrice ?: currentPrice,
-        discount = discount ?: 0,
-        currency = currency,
-        availability = availability,
-        sellerName = sellerName,
-        rating = rating ?: 0f,
-        lastUpdated = lastUpdated,
-        matchConfidence = matchConfidence,
-        variantInfo = variantInfo
-    )
-    return ProductDetails(
-        productId = id ?: "${brand}_${model}_${productTitle}".hashCode().toString(),
-        title = productTitle,
-        brand = brand,
-        model = model,
-        imageUrl = imageUrl.orEmpty(),
-        category = category,
-        offers = listOf(offer),
-        priceHistory = priceHistory.map { PriceHistoryPoint(it.date, it.price, it.storeName) },
-        description = description
-    )
-}
+private fun LiveProductDto.toProductOffer(): ProductOffer = ProductOffer(
+    id = id ?: "${storeName}_${productTitle}_${currentPrice}".hashCode().toString(),
+    storeName = storeName,
+    productTitle = productTitle,
+    productUrl = productUrl,
+    imageUrl = imageUrl.orEmpty(),
+    currentPrice = currentPrice,
+    originalPrice = originalPrice ?: currentPrice,
+    discount = discount ?: 0,
+    currency = currency,
+    availability = availability,
+    sellerName = sellerName,
+    rating = rating ?: 0f,
+    lastUpdated = lastUpdated,
+    matchConfidence = matchConfidence,
+    variantInfo = variantInfo
+)

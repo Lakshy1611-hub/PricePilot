@@ -58,7 +58,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ui.viewmodel.PricePilotViewModel
+
+private fun roundedClip(shape: androidx.compose.ui.graphics.Shape): Modifier = Modifier.graphicsLayer { this.shape = shape; clip = true }
 
 @Composable
 fun HomeScreen(
@@ -88,16 +89,14 @@ fun HomeScreen(
     fun search() { if (query.isNotBlank()) { viewModel.searchProducts(query.trim()); onNavigateToSearch() } }
     fun compare() { if (query.isNotBlank()) { viewModel.compareProduct(query.trim()); onNavigateToResults() } }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, selected = true, onClick = {})
-                NavigationBarItem(icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search") }, selected = false, onClick = onNavigateToSearch)
-                NavigationBarItem(icon = { Icon(Icons.Default.Bookmark, null) }, label = { Text("Wishlist") }, selected = false, onClick = onNavigateToWishlist)
-                NavigationBarItem(icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") }, selected = false, onClick = onNavigateToSettings)
-            }
+    Scaffold(bottomBar = {
+        NavigationBar {
+            NavigationBarItem(icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, selected = true, onClick = {})
+            NavigationBarItem(icon = { Icon(Icons.Default.Search, null) }, label = { Text("Search") }, selected = false, onClick = onNavigateToSearch)
+            NavigationBarItem(icon = { Icon(Icons.Default.Bookmark, null) }, label = { Text("Wishlist") }, selected = false, onClick = onNavigateToWishlist)
+            NavigationBarItem(icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") }, selected = false, onClick = onNavigateToSettings)
         }
-    ) { padding ->
+    }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp)) {
             AnimatedVisibility(visible, enter = fadeIn(tween(450)) + scaleIn(tween(450))) {
                 Column {
@@ -106,17 +105,17 @@ fun HomeScreen(
                             Text("Smart shopping starts here", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             Text("PricePilot", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
                         }
-                        Box(Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(54.dp).then(roundedClip(RoundedCornerShape(18.dp))).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(30.dp).graphicsLayer { rotationZ = floatY })
                         }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primaryContainer))).padding(22.dp)) {
-                        Box(Modifier.size(150.dp).offset(x = 190.dp, y = (-45).dp + floatY.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .12f)))
-                        Box(Modifier.size(95.dp).offset(x = 235.dp, y = 125.dp - floatY.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .10f)))
+                    Box(Modifier.fillMaxWidth().height(220.dp).then(roundedClip(RoundedCornerShape(30.dp))).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primaryContainer))).padding(22.dp)) {
+                        Box(Modifier.size(150.dp).offset(x = 190.dp, y = (-45).dp + floatY.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .12f)))
+                        Box(Modifier.size(95.dp).offset(x = 235.dp, y = 125.dp - floatY.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .10f)))
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.onPrimary) }
+                                Box(Modifier.size(44.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.onPrimary) }
                                 Spacer(Modifier.width(10.dp)); Text("LIVE DEAL HUNT", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold)
                             }
                             Spacer(Modifier.height(16.dp))
@@ -130,25 +129,11 @@ fun HomeScreen(
                         Column(Modifier.padding(18.dp)) {
                             Text("What do you want to buy?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                             Spacer(Modifier.height(10.dp))
-                            OutlinedTextField(
-                                value = query,
-                                onValueChange = { query = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("Search a product or paste a link…") },
-                                leadingIcon = { Icon(Icons.Default.Search, null) },
-                                singleLine = true,
-                                shape = RoundedCornerShape(18.dp),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { search() })
-                            )
+                            OutlinedTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Search a product or paste a link…") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, shape = RoundedCornerShape(18.dp), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { search() }))
                             Spacer(Modifier.height(12.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Button(onClick = { compare() }, enabled = query.isNotBlank(), modifier = Modifier.weight(1f).graphicsLayer { scaleX = pulse; scaleY = pulse }, shape = RoundedCornerShape(17.dp)) {
-                                    Icon(Icons.Default.Compare, null); Spacer(Modifier.width(6.dp)); Text("Compare", fontWeight = FontWeight.Bold)
-                                }
-                                Button(onClick = { search() }, enabled = query.isNotBlank(), modifier = Modifier.weight(1f), shape = RoundedCornerShape(17.dp)) {
-                                    Icon(Icons.Default.Search, null); Spacer(Modifier.width(6.dp)); Text("Search", fontWeight = FontWeight.Bold)
-                                }
+                                Button(onClick = { compare() }, enabled = query.isNotBlank(), modifier = Modifier.weight(1f).graphicsLayer { scaleX = pulse; scaleY = pulse }, shape = RoundedCornerShape(17.dp)) { Icon(Icons.Default.Compare, null); Spacer(Modifier.width(6.dp)); Text("Compare", fontWeight = FontWeight.Bold) }
+                                Button(onClick = { search() }, enabled = query.isNotBlank(), modifier = Modifier.weight(1f), shape = RoundedCornerShape(17.dp)) { Icon(Icons.Default.Search, null); Spacer(Modifier.width(6.dp)); Text("Search", fontWeight = FontWeight.Bold) }
                             }
                             Spacer(Modifier.height(8.dp))
                             Text("Tip: press Enter to search instantly", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -159,10 +144,10 @@ fun HomeScreen(
                     Spacer(Modifier.height(10.dp))
                     val stores = listOf("AJIO" to "ajio.com", "Amazon" to "amazon.in", "Flipkart" to "flipkart.com", "Meesho" to "meesho.com", "Myntra" to "myntra.com")
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(2.dp)) {
-                        itemsIndexed(stores) { index, store ->
+                        itemsIndexed(stores) { _, store ->
                             Card(shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(3.dp)) {
                                 Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    AsyncImage(model = "https://www.google.com/s2/favicons?domain=${store.second}&sz=128", contentDescription = store.first, modifier = Modifier.size(30.dp).clip(CircleShape))
+                                    AsyncImage(model = "https://www.google.com/s2/favicons?domain=${store.second}&sz=128", contentDescription = store.first, modifier = Modifier.size(30.dp).then(roundedClip(androidx.compose.foundation.shape.CircleShape)))
                                     Spacer(Modifier.width(8.dp)); Text(store.first, fontWeight = FontWeight.Bold)
                                 }
                             }
@@ -176,19 +161,12 @@ fun HomeScreen(
                     Spacer(Modifier.height(10.dp))
                     if (recents.isEmpty()) {
                         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                            Column(Modifier.fillMaxWidth().padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.History, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.height(8.dp)); Text("Your comparisons will appear here", fontWeight = FontWeight.Bold)
-                            }
+                            Column(Modifier.fillMaxWidth().padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.History, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(8.dp)); Text("Your comparisons will appear here", fontWeight = FontWeight.Bold) }
                         }
                     } else {
                         recents.take(3).forEach { recent ->
                             Card(Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { viewModel.compareProduct(recent.queryOrUrl); onNavigateToResults() }, shape = RoundedCornerShape(20.dp)) {
-                                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.History, null, tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(recent.title, fontWeight = FontWeight.Bold); Text("Best ₹${recent.lowestPrice} • ${recent.storeName}", color = MaterialTheme.colorScheme.primary) }
-                                    Icon(Icons.Default.ArrowForward, null)
-                                }
+                                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.History, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(recent.title, fontWeight = FontWeight.Bold); Text("Best ₹${recent.lowestPrice} • ${recent.storeName}", color = MaterialTheme.colorScheme.primary) }; Icon(Icons.Default.ArrowForward, null) }
                             }
                         }
                     }

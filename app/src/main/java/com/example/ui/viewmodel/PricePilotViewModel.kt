@@ -13,27 +13,28 @@ import com.example.network.LiveProductDto
 import com.example.network.PriceApiFactory
 import com.example.network.PriceResponseParser
 import com.example.repository.PricePilotRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.URI
 
 class PricePilotViewModel(application: Application) : AndroidViewModel(application) {
     private val localRepository: PricePilotRepository
     private val priceApi = runCatching { PriceApiFactory.create() }.getOrNull()
+    private val searchCache = LinkedHashMap<String, List<ProductDetails>>(20, 0.75f, true)
 
     init {
         val db = PricePilotDatabase.getDatabase(application)
         localRepository = PricePilotRepository(db.wishlistDao(), db.recentComparisonDao())
     }
 
-    val wishlist: StateFlow<List<WishlistEntity>> = localRepository.wishlistFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val recentComparisons: StateFlow<List<RecentComparisonEntity>> = localRepository.recentComparisonsFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val wishlist: StateFlow<List<WishlistEntity>> = localRepository.wishlistFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val recentComparisons: StateFlow<List<RecentComparisonEntity>> = localRepository.recentComparisonsFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _currentComparison = MutableStateFlow<ProductDetails?>(null)
     val currentComparison: StateFlow<ProductDetails?> = _currentComparison.asStateFlow()
@@ -49,26 +50,18 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
 
     fun compareProduct(queryOrUrl: String, selectedStores: Set<String> = emptySet()) {
-        if (queryOrUrl.isBlank()) {
-            _errorMessage.value = "Please enter a valid product name or link."
-            return
-        }
+        if (queryOrUrl.isBlank()) { _errorMessage.value = "Please enter a valid product name or link."; return }
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val products = fetchLiveProducts(queryOrUrl.trim())
-                val filteredProducts = if (selectedStores.isEmpty()) products else products.filter {
-                    canonicalStoreName(it.storeName, it.productUrl).equalsAny(selectedStores)
-                }
-                if (selectedStores.isNotEmpty() && filteredProducts.isEmpty()) {
-                    error("No live offers were found on the selected stores")
-                }
+                val products = fetchLiveProducts(queryOrUrl.trim()).filter { it.currentPrice > 0 }
+                val filteredProducts = if (selectedStores.isEmpty()) products else products.filter { canonicalStoreName(it.storeName, it.productUrl).equalsAny(selectedStores) }
+                if (filteredProducts.isEmpty()) error("No priced live offers were found on the selected stores")
                 val grouped = groupProducts(filteredProducts)
-                val product = grouped.maxByOrNull { it.offers.size }
-                    ?: error("No live offers were found for this product")
+                val product = grouped.maxByOrNull { it.offers.size } ?: error("No live offers were found for this product")
                 _currentComparison.value = product
-                val cheapest = product.offers.minBy { it.currentPrice }
+                val cheapest = product.offers.filter { it.currentPrice > 0 }.minByOrNull { it.currentPrice } ?: error("No priced offer available")
                 localRepository.addRecent(queryOrUrl, product.title, cheapest.currentPrice, cheapest.storeName, product.imageUrl)
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Couldn't load live prices. Please try again."
@@ -78,12 +71,20 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun searchProducts(query: String) {
-        if (query.isBlank()) { _searchResults.value = emptyList(); _errorMessage.value = null; return }
+        val cleanQuery = query.trim()
+        if (cleanQuery.isBlank()) { _searchResults.value = emptyList(); _errorMessage.value = null; return }
+        val cached = synchronized(searchCache) { searchCache[cleanQuery.lowercase()] }
+        if (cached != null) { _searchResults.value = cached; _errorMessage.value = null; return }
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                _searchResults.value = groupProducts(fetchLiveProducts(query.trim()))
+                val results = withContext(Dispatchers.IO) { groupProducts(fetchLiveProducts(cleanQuery)) }
+                synchronized(searchCache) {
+                    searchCache[cleanQuery.lowercase()] = results
+                    while (searchCache.size > 20) searchCache.remove(searchCache.entries.first().key)
+                }
+                _searchResults.value = results
             } catch (e: Exception) {
                 _searchResults.value = emptyList()
                 _errorMessage.value = e.message ?: "Search failed. Please try again."
@@ -91,12 +92,12 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private suspend fun fetchLiveProducts(query: String): List<LiveProductDto> {
+    private suspend fun fetchLiveProducts(query: String): List<LiveProductDto> = withContext(Dispatchers.IO) {
         val api = priceApi ?: error("Live price API is not configured")
         val responseBody = api.search(query).string()
         if (responseBody.isBlank()) error("The price server returned an empty response")
-        return PriceResponseParser.parse(responseBody)
-            .filter { it.currentPrice > 0 && it.productTitle.isNotBlank() }
+        PriceResponseParser.parse(responseBody)
+            .filter { it.productTitle.isNotBlank() }
             .distinctBy { "${canonicalStoreName(it.storeName, it.productUrl)}|${it.productTitle}|${it.currentPrice}|${it.productUrl}" }
     }
 
@@ -109,16 +110,17 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
             if (existing != null) existing += normalized else groups += mutableListOf(normalized)
         }
         return groups.map { group ->
-            val representative = group.minByOrNull { it.currentPrice } ?: group.first()
+            val priced = group.filter { it.currentPrice > 0 }
+            val representative = priced.minByOrNull { it.currentPrice } ?: group.first()
             ProductDetails(
                 productId = stableProductId(group), title = representative.productTitle, brand = representative.brand,
                 model = representative.model, imageUrl = representative.imageUrl.orEmpty(), category = representative.category,
-                offers = group.map { it.toProductOffer() }.distinctBy { "${it.storeName}|${it.productUrl}|${it.currentPrice}" }.sortedBy { it.currentPrice },
+                offers = group.map { it.toProductOffer() }.distinctBy { "${it.storeName}|${it.productUrl}|${it.currentPrice}|${it.availability}" }.sortedWith(compareByDescending<ProductOffer> { it.currentPrice > 0 }.thenBy { it.currentPrice }),
                 priceHistory = group.flatMap { dto -> dto.priceHistory.map { PriceHistoryPoint(it.date, it.price, canonicalStoreName(it.storeName, dto.productUrl)) } }.sortedByDescending { it.date },
                 description = representative.description
             )
         }.filter { it.offers.isNotEmpty() }
-            .sortedWith(compareByDescending<ProductDetails> { it.offers.size }.thenBy { it.offers.minOf { offer -> offer.currentPrice } })
+            .sortedWith(compareByDescending<ProductDetails> { it.offers.any { offer -> offer.currentPrice > 0 } }.thenBy { it.offers.filter { offer -> offer.currentPrice > 0 }.minOfOrNull { offer -> offer.currentPrice } ?: Double.MAX_VALUE })
     }
 
     private fun areSameProduct(a: LiveProductDto, b: LiveProductDto): Boolean {
@@ -141,7 +143,7 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
     fun toggleWishlist(product: ProductDetails, bestOffer: ProductOffer) = viewModelScope.launch {
         val isAlreadySaved = wishlist.value.any { it.productId == product.productId }
         if (isAlreadySaved) localRepository.removeFromWishlist(product.productId)
-        else localRepository.addToWishlist(WishlistEntity(productId = product.productId, title = product.title, imageUrl = product.imageUrl, currentPrice = bestOffer.currentPrice, lowestPrice = product.offers.minOf { it.currentPrice }, storeName = bestOffer.storeName, productUrl = bestOffer.productUrl, priceDropStatus = if (bestOffer.discount > 15) "🔥 ${bestOffer.discount}% Price Drop!" else "Stable Price"))
+        else localRepository.addToWishlist(WishlistEntity(productId = product.productId, title = product.title, imageUrl = product.imageUrl, currentPrice = bestOffer.currentPrice, lowestPrice = product.offers.filter { it.currentPrice > 0 }.minOfOrNull { it.currentPrice } ?: bestOffer.currentPrice, storeName = bestOffer.storeName, productUrl = bestOffer.productUrl, priceDropStatus = if (bestOffer.discount > 15) "🔥 ${bestOffer.discount}% Price Drop!" else "Stable Price"))
     }
 
     fun removeFromWishlist(productId: String) = viewModelScope.launch { localRepository.removeFromWishlist(productId) }

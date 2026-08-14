@@ -55,16 +55,20 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val products = fetchLiveProducts(queryOrUrl.trim()).filter { it.currentPrice > 0 }
+                // Keep listings even when price/availability is missing. A comparison should show
+                // where the product was found and clearly label unavailable prices instead of dropping it.
+                val products = fetchLiveProducts(queryOrUrl.trim())
                 val filteredProducts = if (selectedStores.isEmpty()) products else products.filter { canonicalStoreName(it.storeName, it.productUrl).equalsAny(selectedStores) }
-                if (filteredProducts.isEmpty()) error("No priced live offers were found on the selected stores")
+                if (filteredProducts.isEmpty()) error("No store listing was returned for this search")
                 val grouped = groupProducts(filteredProducts)
-                val product = grouped.maxByOrNull { it.offers.size } ?: error("No live offers were found for this product")
+                val product = grouped.maxByOrNull { it.offers.size } ?: error("No matching product listing was returned")
                 _currentComparison.value = product
-                val cheapest = product.offers.filter { it.currentPrice > 0 }.minByOrNull { it.currentPrice } ?: error("No priced offer available")
-                localRepository.addRecent(queryOrUrl, product.title, cheapest.currentPrice, cheapest.storeName, product.imageUrl)
+                val cheapest = product.offers.filter { it.currentPrice > 0 }.minByOrNull { it.currentPrice }
+                if (cheapest != null) {
+                    localRepository.addRecent(queryOrUrl, product.title, cheapest.currentPrice, cheapest.storeName, product.imageUrl)
+                }
             } catch (e: Exception) {
-                _errorMessage.value = e.message ?: "Couldn't load live prices. Please try again."
+                _errorMessage.value = e.message ?: "Couldn't load product listings. Please try again."
                 _currentComparison.value = null
             } finally { _isLoading.value = false }
         }

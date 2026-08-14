@@ -1,5 +1,6 @@
 package com.example.ai
 
+import com.google.firebase.FirebaseApp
 import com.google.firebase.ai.FirebaseAI
 import com.google.firebase.ai.type.GenerativeBackend
 import kotlinx.coroutines.Dispatchers
@@ -8,7 +9,10 @@ import kotlinx.coroutines.withContext
 /** In-app AI layer for product understanding, deal summaries and shopping advice. */
 object PricePilotAi {
     private val model by lazy {
-        FirebaseAI.getInstance(GenerativeBackend.googleAI()).generativeModel("gemini-2.5-flash")
+        FirebaseAI.getInstance(
+            FirebaseApp.getInstance(),
+            GenerativeBackend.googleAI()
+        ).generativeModel("gemini-2.5-flash")
     }
 
     suspend fun ask(question: String, productContext: String = ""): String = withContext(Dispatchers.IO) {

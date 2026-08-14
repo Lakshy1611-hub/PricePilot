@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -11,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
@@ -22,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.ui.viewmodel.PricePilotViewModel
@@ -32,6 +37,7 @@ import java.util.Locale
 @Composable
 fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
     val product = viewModel.currentComparison.collectAsState().value
+    val context = LocalContext.current
     Scaffold(topBar = { TopAppBar(title = { Text("Price History", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onBack) { Icon(Icons.Default.ArrowBack, "Back") } }) }) { padding ->
         if (product == null || product.offers.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
@@ -60,6 +66,11 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                 else -> "Estimated trend only. This is not a record of past prices and is not a guarantee of future prices."
             }
 
+            fun openGoogleHistory() {
+                val q = Uri.encode("${product.title} price history India ${product.offers.joinToString(" ") { it.storeName }}")
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$q")))
+            }
+
             LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(5.dp)) {
@@ -84,12 +95,24 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                 item {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp)) {
                         Column(Modifier.padding(16.dp)) {
-                            Text(if (hasActualHistory) "Recorded price history" else "Estimated price trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(if (hasActualHistory) "Recorded price history" else "Estimated price trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                                AssistChip(onClick = { openGoogleHistory() }, label = { Text("Google check") }, leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(18.dp)) })
+                            }
                             Spacer(Modifier.height(12.dp))
                             PriceChart(prices, animatedProgress)
                             Spacer(Modifier.height(8.dp))
                             Text("Current cheapest: ₹${formatAmount(current)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            if (!hasActualHistory) Text("This graph is an estimate based on the current price and trend assumptions.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (!hasActualHistory) {
+                                Spacer(Modifier.height(5.dp))
+                                Text("Google can help you verify public price-history pages, but Google Search does not provide a reliable structured historical-price API. PricePilot will never label an estimate as verified history.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.height(10.dp))
+                                OutlinedButton(onClick = { openGoogleHistory() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
+                                    Icon(Icons.Default.OpenInNew, null)
+                                    Spacer(Modifier.width(7.dp))
+                                    Text("Check this product's history on Google")
+                                }
+                            }
                         }
                     }
                 }

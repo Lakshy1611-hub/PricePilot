@@ -59,6 +59,9 @@ interface RecentComparisonDao {
     @Query("SELECT * FROM recent_comparisons ORDER BY timestamp DESC LIMIT 20")
     fun getAllRecents(): Flow<List<RecentComparisonEntity>>
 
+    @Query("DELETE FROM recent_comparisons WHERE LOWER(TRIM(queryOrUrl)) = LOWER(TRIM(:queryOrUrl))")
+    suspend fun removeDuplicateRecent(queryOrUrl: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecent(item: RecentComparisonEntity)
 

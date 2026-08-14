@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,11 +42,9 @@ fun ProductDetailsScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(6.dp)) {
                             Column(Modifier.padding(16.dp)) {
                                 AsyncImage(product.imageUrl, product.title, Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Crop)
-                                Spacer(Modifier.height(16.dp))
-                                Text(product.brand, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(16.dp)); Text(product.brand, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 Text(product.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                                Spacer(Modifier.height(10.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(6.dp)); Text("Best live price ₹${best.currentPrice} on ${best.storeName}", fontWeight = FontWeight.Bold) }
+                                Spacer(Modifier.height(10.dp)); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.TrendingDown, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(6.dp)); Text("Best live price ₹${best.currentPrice} on ${best.storeName}", fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
@@ -53,42 +52,24 @@ fun ProductDetailsScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                 item {
                     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(22.dp)) {
                         Column(Modifier.padding(18.dp)) {
-                            Text("Best deal right now", fontWeight = FontWeight.ExtraBold)
-                            Text("₹${best.currentPrice}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                            Spacer(Modifier.height(8.dp))
+                            Text("Best deal right now", fontWeight = FontWeight.ExtraBold); Text("₹${best.currentPrice}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold); Spacer(Modifier.height(8.dp))
                             Button(onClick = { if (best.productUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(best.productUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) { Icon(Icons.Default.OpenInNew, null); Spacer(Modifier.width(6.dp)); Text("Open ${best.storeName} deal") }
                         }
                     }
                 }
                 item { Text("All live offers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold) }
                 itemsIndexed(product.offers.sortedBy { it.currentPrice }) { index, offer ->
-                    AnimatedVisibility(true, enter = fadeIn(tween = androidx.compose.animation.core.tween(350, index * 45)) + slideInVertically(tween = androidx.compose.animation.core.tween(350, index * 45)) { it / 5 }) {
+                    AnimatedVisibility(true, enter = fadeIn(tween(350, index * 45)) + slideInVertically(tween(350, index * 45)) { it / 5 }) {
                         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
                             Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                                 AsyncImage("https://www.google.com/s2/favicons?domain=${offer.storeName.lowercase().replace(" ", "")}.com&sz=128", offer.storeName, Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)))
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(offer.storeName, fontWeight = FontWeight.ExtraBold)
-                                    Text("₹${offer.currentPrice} • ${offer.discount}% OFF", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                    Text(offer.availability, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                                Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(offer.storeName, fontWeight = FontWeight.ExtraBold); Text("₹${offer.currentPrice} • ${offer.discount}% OFF", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold); Text(offer.availability, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 OutlinedButton(onClick = { if (offer.productUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(offer.productUrl))) }, shape = RoundedCornerShape(13.dp)) { Text("Open") }
                             }
                         }
                     }
                 }
-                item {
-                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-                            Spacer(Modifier.height(8.dp))
-                            Text(product.description.ifBlank { "No description was provided by the live price source." }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.height(10.dp))
-                            Text("Category: ${product.category.ifBlank { "Not provided" }}")
-                            Text("Model: ${product.model.ifBlank { "Not provided" }}")
-                        }
-                    }
-                }
+                item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) { Column(Modifier.padding(18.dp)) { Text("Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold); Spacer(Modifier.height(8.dp)); Text(product.description.ifBlank { "No description was provided by the live price source." }, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(10.dp)); Text("Category: ${product.category.ifBlank { "Not provided" }}"); Text("Model: ${product.model.ifBlank { "Not provided" }}") } } }
             }
         }
     }

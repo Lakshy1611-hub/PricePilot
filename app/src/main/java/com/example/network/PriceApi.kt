@@ -69,6 +69,12 @@ object PriceResponseParser {
         val price = firstDouble(o, "currentPrice", "price", "salePrice", "amount") ?: return null
         if (price <= 0.0) return null
 
+        val productUrl = firstString(o, "productUrl", "url", "link") ?: ""
+        val rawStore = firstString(o, "storeName", "store", "retailer", "merchant") ?: "Unknown Store"
+        // Prefer the product URL's domain when available. This prevents an API/provider
+        // from labelling every result with one retailer even when the links are different.
+        val store = inferStoreName(productUrl) ?: canonicalStoreName(rawStore)
+
         val history = o.optJSONArray("priceHistory")?.let { arr ->
             buildList {
                 for (i in 0 until arr.length()) {
@@ -77,7 +83,8 @@ object PriceResponseParser {
                     add(LivePriceHistoryDto(
                         date = firstString(h, "date", "timestamp") ?: "",
                         price = p,
-                        storeName = firstString(h, "storeName", "store") ?: firstString(o, "storeName", "store") ?: ""
+                        storeName = inferStoreName(firstString(h, "productUrl", "url", "link") ?: "")
+                            ?: canonicalStoreName(firstString(h, "storeName", "store") ?: store)
                     ))
                 }
             }
@@ -85,9 +92,9 @@ object PriceResponseParser {
 
         return LiveProductDto(
             id = firstString(o, "id", "productId", "offerId"),
-            storeName = firstString(o, "storeName", "store", "retailer", "merchant") ?: "Unknown Store",
+            storeName = store,
             productTitle = title,
-            productUrl = firstString(o, "productUrl", "url", "link") ?: "",
+            productUrl = productUrl,
             imageUrl = firstString(o, "imageUrl", "image", "thumbnail", "thumbnailUrl"),
             currentPrice = price,
             originalPrice = firstDouble(o, "originalPrice", "mrp", "listPrice") ?: price,
@@ -105,6 +112,37 @@ object PriceResponseParser {
             description = firstString(o, "description") ?: "",
             priceHistory = history
         )
+    }
+
+    private fun inferStoreName(url: String): String? {
+        val host = runCatching { java.net.URI(url).host?.lowercase() }.getOrNull() ?: return null
+        return when {
+            host.contains("amazon.") -> "Amazon"
+            host.contains("flipkart.") -> "Flipkart"
+            host.contains("ajio.") -> "AJIO"
+            host.contains("meesho.") -> "Meesho"
+            host.contains("myntra.") -> "Myntra"
+            host.contains("croma.") -> "Croma"
+            host.contains("reliancedigital.") -> "Reliance Digital"
+            host.contains("tatacliq.") -> "Tata CLiQ"
+            host.contains("snapdeal.") -> "Snapdeal"
+            host.contains("nykaa.") -> "Nykaa"
+            else -> null
+        }
+    }
+
+    private fun canonicalStoreName(value: String): String = when (value.trim().lowercase()) {
+        "amazon", "amazon.in" -> "Amazon"
+        "flipkart", "flipkart.com" -> "Flipkart"
+        "ajio", "ajio.com" -> "AJIO"
+        "meesho", "meesho.com" -> "Meesho"
+        "myntra", "myntra.com" -> "Myntra"
+        "croma", "croma.com" -> "Croma"
+        "reliance digital", "reliancedigital.in" -> "Reliance Digital"
+        "tata cliq", "tatacliq.com" -> "Tata CLiQ"
+        "snapdeal", "snapdeal.com" -> "Snapdeal"
+        "nykaa", "nykaa.com" -> "Nykaa"
+        else -> value
     }
 
     private fun firstString(o: JSONObject, vararg keys: String): String? = keys.firstNotNullOfOrNull { key ->

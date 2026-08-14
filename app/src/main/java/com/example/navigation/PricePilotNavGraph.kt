@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.AboutScreen
 import com.example.ui.screens.AiShoppingScreen
 import com.example.ui.screens.AlertsScreen
+import com.example.ui.screens.BestDealsScreen
 import com.example.ui.screens.ComparisonResultsScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.OnboardingScreen
@@ -25,7 +26,8 @@ fun PricePilotNavGraph(viewModel: PricePilotViewModel) {
     NavHost(navController = navController, startDestination = Screen.Splash.route) {
         composable(Screen.Splash.route) { SplashScreen(onNavigateToOnboarding = { navController.navigate(Screen.Onboarding.route) { popUpTo(Screen.Splash.route) { inclusive = true } } }) }
         composable(Screen.Onboarding.route) { OnboardingScreen(onGetStarted = { navController.navigate(Screen.Home.route) { popUpTo(Screen.Onboarding.route) { inclusive = true } } }) }
-        composable(Screen.Home.route) { HomeScreen(viewModel, { navController.navigate(Screen.ComparisonResults.route) }, { navController.navigate(Screen.Search.route) }, { navController.navigate(Screen.Wishlist.route) }, { navController.navigate(Screen.Settings.route) }, { navController.navigate(Screen.RecentComparisons.route) }, { navController.navigate(Screen.AiShopping.route) }, { navController.navigate(Screen.Alerts.route) }) }
+        composable(Screen.Home.route) { HomeScreen(viewModel, { navController.navigate(Screen.ComparisonResults.route) }, { navController.navigate(Screen.Search.route) }, { navController.navigate(Screen.Wishlist.route) }, { navController.navigate(Screen.Settings.route) }, { navController.navigate(Screen.RecentComparisons.route) }, { navController.navigate(Screen.AiShopping.route) }, { navController.navigate(Screen.Alerts.route) }, { navController.navigate(Screen.BestDeals.route) }) }
+        composable(Screen.BestDeals.route) { BestDealsScreen(viewModel, { navController.popBackStack() }, { navController.navigate(Screen.ComparisonResults.route) }) }
         composable(Screen.ComparisonResults.route) { ComparisonResultsScreen(viewModel, { navController.popBackStack() }, { navController.navigate(Screen.ProductDetails.route) }, { navController.navigate(Screen.PriceHistory.route) }) }
         composable(Screen.ProductDetails.route) { ProductDetailsScreen(viewModel) { navController.popBackStack() } }
         composable(Screen.PriceHistory.route) { PriceHistoryScreen(viewModel) { navController.popBackStack() } }

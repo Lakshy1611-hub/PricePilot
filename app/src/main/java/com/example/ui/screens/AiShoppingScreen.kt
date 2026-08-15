@@ -79,7 +79,7 @@ fun AiShoppingScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                 if (product != null) {
                     item { Text("Quick questions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold) }
                     items(listOf("Which is the best deal?", "Is this a good price?", "Compare value across stores", "What should I check before buying?")) { q ->
-                        AssistChip(onClick = { question = q }, label = { Text(q) })
+                        AssistChip(onClick = { askAi(q) }, label = { Text(q) }, enabled = !loading)
                     }
                 } else {
                     item {

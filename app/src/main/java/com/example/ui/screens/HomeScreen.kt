@@ -24,7 +24,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.ui.theme.PricePilotBlue
 import com.example.ui.theme.PricePilotGreen
-import com.example.ui.theme.PricePilotOrange
 import com.example.ui.theme.PricePilotPink
 import com.example.ui.theme.PricePilotPurple
 import com.example.ui.theme.PricePilotYellow
@@ -57,17 +56,15 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             NavigationBar(containerColor = Color.White, tonalElevation = 8.dp) {
-                NavigationBarItem(Icons.Default.Home, { Text("Home") }, true, onClick = {})
-                NavigationBarItem(Icons.Default.LocalOffer, { Text("Deals") }, false, onClick = onNavigateToDeals)
-                NavigationBarItem(Icons.Default.NotificationsNone, { Text("Alerts") }, false, onClick = onNavigateToAlerts)
-                NavigationBarItem(Icons.Default.FavoriteBorder, { Text("Watchlist") }, false, onClick = onNavigateToWishlist)
-                NavigationBarItem(Icons.Default.PersonOutline, { Text("Profile") }, false, onClick = onNavigateToSettings)
+                NavigationBarItem(icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, selected = true, onClick = {})
+                NavigationBarItem(icon = { Icon(Icons.Default.LocalOffer, null) }, label = { Text("Deals") }, selected = false, onClick = onNavigateToDeals)
+                NavigationBarItem(icon = { Icon(Icons.Default.NotificationsNone, null) }, label = { Text("Alerts") }, selected = false, onClick = onNavigateToAlerts)
+                NavigationBarItem(icon = { Icon(Icons.Default.FavoriteBorder, null) }, label = { Text("Watchlist") }, selected = false, onClick = onNavigateToWishlist)
+                NavigationBarItem(icon = { Icon(Icons.Default.PersonOutline, null) }, label = { Text("Profile") }, selected = false, onClick = onNavigateToSettings)
             }
         }
     ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-        ) {
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -124,11 +121,7 @@ fun HomeScreen(
                 }
 
                 Spacer(Modifier.height(18.dp))
-                Card(
-                    Modifier.fillMaxWidth().height(184.dp).clickable(onClick = onNavigateToDeals),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = PricePilotPurple)
-                ) {
+                Card(Modifier.fillMaxWidth().height(184.dp).clickable(onClick = onNavigateToDeals), shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = PricePilotPurple)) {
                     Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(PricePilotPurple, PricePilotBlue)))) {
                         Column(Modifier.padding(20.dp)) {
                             Surface(color = Color.White.copy(.92f), shape = RoundedCornerShape(10.dp)) {

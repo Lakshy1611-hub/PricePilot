@@ -242,19 +242,29 @@ fun HomeScreen(
 
 @Composable
 private fun PremiumNavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    NavigationBarItem(
-        icon = { Icon(icon, null) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-        selected = selected,
-        onClick = onClick,
-        colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = PremiumDesign.Purple,
-            selectedTextColor = PremiumDesign.Purple,
-            indicatorColor = PremiumDesign.PurpleSoft,
-            unselectedIconColor = PremiumDesign.Muted,
-            unselectedTextColor = PremiumDesign.Muted
-        )
-    )
+    Surface(
+        modifier = Modifier
+            .weight(1f)
+            .clickable(onClick = onClick),
+        color = Color.Transparent,
+        contentColor = if (selected) PremiumDesign.Purple else PremiumDesign.Muted
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selected) PremiumDesign.PurpleSoft else Color.Transparent),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = label)
+            }
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
+    }
 }
 
 @Composable
@@ -310,7 +320,10 @@ private fun CategoryChip(label: String, icon: androidx.compose.ui.graphics.vecto
 
 @Composable
 private fun MiniCategory(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) {
-    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(78.dp)
+    ) {
         Box(Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(tint.copy(.10f)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = tint) }
         Spacer(Modifier.height(6.dp))
         Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = PremiumDesign.Ink)

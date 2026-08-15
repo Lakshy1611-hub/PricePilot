@@ -30,7 +30,7 @@ fun PricePilotNavGraph(viewModel: PricePilotViewModel) {
         composable(Screen.BestDeals.route) { BestDealsScreen(viewModel, { navController.popBackStack() }, { navController.navigate(Screen.ComparisonResults.route) }) }
         composable(Screen.ComparisonResults.route) { ComparisonResultsScreen(viewModel, { navController.popBackStack() }, { navController.navigate(Screen.ProductDetails.route) }, { navController.navigate(Screen.PriceHistory.route) }) }
         composable(Screen.ProductDetails.route) { ProductDetailsScreen(viewModel, onBack = { navController.popBackStack() }, onNavigateToHistory = { navController.navigate(Screen.PriceHistory.route) }) }
-        composable(Screen.PriceHistory.route) { PriceHistoryScreen(viewModel) { navController.popBackStack() } }
+        composable(Screen.PriceHistory.route) { PriceHistoryScreen(viewModel = viewModel, onBack = { navController.popBackStack() }) }
         composable(Screen.Search.route) { SearchScreen(viewModel, { navController.navigate(Screen.Home.route) { popUpTo(Screen.Home.route) { inclusive = true } } }, { navController.navigate(Screen.Wishlist.route) }, { navController.navigate(Screen.Settings.route) }, { navController.navigate(Screen.ComparisonResults.route) }) }
         composable(Screen.Wishlist.route) { WishlistScreen(viewModel, { navController.navigate(Screen.Home.route) { popUpTo(Screen.Home.route) { inclusive = true } } }, { navController.navigate(Screen.Search.route) }, { navController.navigate(Screen.Settings.route) }) }
         composable(Screen.RecentComparisons.route) { RecentComparisonsScreen(viewModel, { navController.popBackStack() }, { navController.navigate(Screen.ComparisonResults.route) }) }

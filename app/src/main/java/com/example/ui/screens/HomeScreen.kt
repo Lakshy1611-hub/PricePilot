@@ -66,3 +66,5 @@ fun HomeScreen(viewModel: PricePilotViewModel, onNavigateToResults: () -> Unit, 
 }
 @Composable private fun CategoryChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) { Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(82.dp)) { Box(Modifier.size(52.dp).clip(CircleShape).background(tint.copy(.10f)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = tint) }; Spacer(Modifier.height(5.dp)); Text(label, maxLines = 1, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold) } }
 @Composable private fun MiniCategory(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) { Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally) { Box(Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(tint.copy(.10f)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = tint) }; Spacer(Modifier.height(6.dp)); Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold) } }
+
+// Build verification marker: latest main source keeps MiniCategory independent of RowScope.weight.

@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,7 +62,14 @@ fun WishlistScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Saved Wishlist") },
+                title = {
+                    Column {
+                        Text("Saved Wishlist", fontWeight = FontWeight.ExtraBold)
+                        if (wishlist.isNotEmpty()) {
+                            Text("${wishlist.size} saved product${if (wishlist.size == 1) "" else "s"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                },
                 actions = {
                     if (wishlist.isNotEmpty()) {
                         IconButton(onClick = { viewModel.clearWishlist() }) {
@@ -84,41 +94,52 @@ fun WishlistScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Your wishlist is empty", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Card(shape = RoundedCornerShape(32.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(52.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Your wishlist is empty", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Save products you like and keep their prices in one place.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(onClick = onNavigateSearch) {
+                            Icon(Icons.Default.ShoppingBag, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Find Products", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item { Spacer(modifier = Modifier.height(4.dp)) }
                 items(wishlist, key = { it.productId }) { item ->
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.productUrl)))
-                                }
-                            },
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.productUrl))) }
+                        },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = MaterialTheme.shapes.medium
+                        shape = RoundedCornerShape(22.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(
                                 model = item.imageUrl,
                                 contentDescription = item.title,
-                                modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.small),
+                                modifier = Modifier.size(82.dp).clip(RoundedCornerShape(16.dp)),
                                 contentScale = ContentScale.Crop
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(item.title, fontWeight = FontWeight.Bold, maxLines = 2, style = MaterialTheme.typography.bodyMedium)
+                                Text(item.title, fontWeight = FontWeight.Bold, maxLines = 2, style = MaterialTheme.typography.bodyLarge)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("₹${item.currentPrice}", color = com.example.ui.theme.BestPriceEmerald, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
+                                Text(item.storeName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("₹${item.currentPrice} (${item.storeName})", color = com.example.ui.theme.BestPriceEmerald, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text("Tap to open • ${item.priceDropStatus}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                Text(item.priceDropStatus, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                             IconButton(onClick = { viewModel.removeFromWishlist(item.productId) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error)
@@ -126,6 +147,7 @@ fun WishlistScreen(
                         }
                     }
                 }
+                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
         }
     }

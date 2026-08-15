@@ -64,12 +64,18 @@ fun AlertsScreen(onBack: () -> Unit) {
                             Spacer(Modifier.height(10.dp))
                             Text("No alerts yet", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                             Text("Create an alert when you want a product to reach a specific price.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(14.dp))
+                            Button(onClick = { showAdd = true }) { Text("Create your first alert") }
                         }
                     }
                 }
             } else {
+                item {
+                    Text("${alerts.size} active price alert${if (alerts.size == 1) "" else "s"}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                }
                 items(alerts) { alert ->
                     var enabled by remember(alert.product) { mutableStateOf(alert.active) }
+                    val progress = (alert.target / alert.current).coerceIn(0.05, 1.0).toFloat()
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(3.dp)) {
                         Column(Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -81,7 +87,7 @@ fun AlertsScreen(onBack: () -> Unit) {
                                 Switch(checked = enabled, onCheckedChange = { enabled = it })
                             }
                             Spacer(Modifier.height(10.dp))
-                            LinearProgressIndicator(progress = { (alert.target / alert.current).coerceIn(0.05, 1.0).toFloat() }, modifier = Modifier.fillMaxWidth())
+                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(if (enabled) "Alert active" else "Alert paused", fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -100,8 +106,8 @@ fun AlertsScreen(onBack: () -> Unit) {
             title = { Text("Create price alert", fontWeight = FontWeight.ExtraBold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(value = productName, onValueChange = { productName = it }, label = { Text("Product name") }, singleLine = true)
-                    OutlinedTextField(value = targetPrice, onValueChange = { value -> targetPrice = value.filter { c -> c.isDigit() || c == '.' } }, label = { Text("Target price (₹)") }, singleLine = true)
+                    OutlinedTextField(value = productName, onValueChange = { productName = it }, label = { Text("Product name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = targetPrice, onValueChange = { value -> targetPrice = value.filter { c -> c.isDigit() || c == '.' } }, label = { Text("Target price (₹)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
             },
             confirmButton = {

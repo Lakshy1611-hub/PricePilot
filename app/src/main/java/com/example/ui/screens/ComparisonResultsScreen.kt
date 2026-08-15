@@ -6,7 +6,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +17,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -60,6 +60,8 @@ fun ComparisonResultsScreen(viewModel: PricePilotViewModel, onBack: () -> Unit, 
         if (product == null) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("No comparison selected") }
         else {
             val best = product.offers.minBy { it.currentPrice }
+            val highest = product.offers.maxOfOrNull { it.currentPrice } ?: best.currentPrice
+            val savings = (highest - best.currentPrice).coerceAtLeast(0.0)
             LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(6.dp)) {
@@ -84,10 +86,13 @@ fun ComparisonResultsScreen(viewModel: PricePilotViewModel, onBack: () -> Unit, 
                 item {
                     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
                         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Savings, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text("CHEAPEST LIVE OFFER", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                                Text("BEST LIVE DEAL", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                                 Text("₹${best.currentPrice}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                 Text("${best.storeName} • ${best.discount}% off", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (savings > 0) Text("Save up to ₹${savings.toInt()} vs other listed offers", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                             Button(onClick = { if (best.productUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(best.productUrl))) }, shape = RoundedCornerShape(15.dp)) { Icon(Icons.Default.OpenInNew, null); Spacer(Modifier.width(5.dp)); Text("Buy") }
                         }

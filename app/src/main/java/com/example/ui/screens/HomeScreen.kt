@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.example.ui.components.ShoppingTrolleyLoading
 import com.example.ui.theme.PricePilotBlue
 import com.example.ui.theme.PricePilotGreen
 import com.example.ui.theme.PricePilotPink
@@ -80,10 +81,12 @@ fun HomeScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(48.dp).clip(CircleShape).background(PricePilotPurple.copy(.10f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Link, null, tint = PricePilotPurple) }
                                 Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) { Text("Extracting product information", fontWeight = FontWeight.ExtraBold); Text(query, maxLines = 1, color = PricePilotPurple, style = MaterialTheme.typography.bodySmall) }
-                                CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                                Column(Modifier.weight(1f)) { Text("Finding the best deal", fontWeight = FontWeight.ExtraBold); Text(query, maxLines = 1, color = PricePilotPurple, style = MaterialTheme.typography.bodySmall) }
                             }
-                            Spacer(Modifier.height(14.dp)); Text("●  Initializing link…", color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(6.dp)); Text("●  Extracting product information", color = PricePilotGreen, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.height(8.dp))
+                            ShoppingTrolleyLoading(Modifier.fillMaxWidth(), progress = .62f)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Comparing stores and checking price trends…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

@@ -21,6 +21,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -38,7 +41,17 @@ import java.util.Locale
 fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
     val product = viewModel.currentComparison.collectAsState().value
     val context = LocalContext.current
-    Scaffold(topBar = { TopAppBar(title = { Text("Price History", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onBack) { Icon(Icons.Default.ArrowBack, "Back") } }) }) { padding ->
+    var selectedRange by rememberSaveable { mutableStateOf("ALL") }
+    val rangeOptions = listOf("7D", "30D", "90D", "1Y", "ALL")
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Price History", fontWeight = FontWeight.Bold) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+            )
+        }
+    ) { padding ->
         if (product == null || product.offers.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
                 Text("No product price is available yet.", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -50,15 +63,30 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
             val hasActualHistory = actualPoints.isNotEmpty()
             val current = product.offers.minOf { it.currentPrice }
             val estimatedPrices = listOf(1.08, 1.05, 1.03, 1.00, .98, 1.01, .97).map { current * it }
-            val prices = if (hasActualHistory) actualPoints.map { it.price } else estimatedPrices
-            val lowest = prices.min()
-            val highest = prices.max()
+            val allPrices = if (hasActualHistory) actualPoints.map { it.price } else estimatedPrices
+            val visibleCount = when (selectedRange) {
+                "7D" -> 7
+                "30D" -> 30
+                "90D" -> 90
+                "1Y" -> 365
+                else -> allPrices.size
+            }
+            val prices = allPrices.takeLast(minOf(visibleCount, allPrices.size))
+            val visiblePoints = if (hasActualHistory) actualPoints.takeLast(minOf(visibleCount, actualPoints.size)) else emptyList()
+            val lowest = prices.minOrNull() ?: current
+            val highest = prices.maxOrNull() ?: current
             val average = prices.average()
             val recent = prices.takeLast(minOf(3, prices.size)).average()
             val old = prices.take(minOf(3, prices.size)).average()
             val dropping = recent < old
             val change = if (old == 0.0) 0.0 else ((recent - old) / old) * 100.0
             val animatedProgress by animateFloatAsState(1f, tween(900), label = "chartReveal")
+            val buyScore = when {
+                hasActualHistory && current <= lowest * 1.01 -> "Excellent"
+                hasActualHistory && current <= average -> "Good"
+                current <= average * 1.05 -> "Fair"
+                else -> "Wait"
+            }
             val prediction = when {
                 hasActualHistory && prices.size >= 4 && dropping && abs(change) >= 3 -> "Recorded data shows a downward trend. A further drop is possible if this trend continues."
                 hasActualHistory && prices.size >= 4 && !dropping && change >= 3 -> "Recorded data shows an upward trend. Consider buying if today's price is attractive."
@@ -71,16 +99,25 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$q")))
             }
 
-            LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            LazyColumn(
+                Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
                 item {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), elevation = CardDefaults.cardElevation(5.dp)) {
                         Column(Modifier.padding(18.dp)) {
                             Text(product.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 2)
                             Spacer(Modifier.height(10.dp))
-                            Surface(color = if (hasActualHistory) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(14.dp)) {
+                            Surface(
+                                color = if (hasActualHistory) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
                                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Icon(Icons.Default.Info, null)
-                                    Text(if (hasActualHistory) "Verified recorded price observations" else "Estimated price trend — not verified historical data", fontWeight = FontWeight.Bold)
+                                    Text(
+                                        if (hasActualHistory) "Verified recorded price observations" else "Estimated price trend — not verified historical data",
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                             Spacer(Modifier.height(14.dp))
@@ -97,7 +134,23 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                         Column(Modifier.padding(16.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(if (hasActualHistory) "Recorded price history" else "Estimated price trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-                                AssistChip(onClick = { openGoogleHistory() }, label = { Text("Google check") }, leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(18.dp)) })
+                                AssistChip(
+                                    onClick = { openGoogleHistory() },
+                                    label = { Text("Google check") },
+                                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(18.dp)) }
+                                )
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                rangeOptions.forEach { range ->
+                                    FilterChip(
+                                        selected = selectedRange == range,
+                                        onClick = { selectedRange = range },
+                                        label = { Text(range) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(13.dp)
+                                    )
+                                }
                             }
                             Spacer(Modifier.height(12.dp))
                             PriceChart(prices, animatedProgress)
@@ -105,7 +158,11 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                             Text("Current cheapest: ₹${formatAmount(current)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             if (!hasActualHistory) {
                                 Spacer(Modifier.height(5.dp))
-                                Text("Google can help you verify public price-history pages, but Google Search does not provide a reliable structured historical-price API. PricePilot will never label an estimate as verified history.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    "Google can help you verify public price-history pages, but Google Search does not provide a reliable structured historical-price API. PricePilot will never label an estimate as verified history.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 Spacer(Modifier.height(10.dp))
                                 OutlinedButton(onClick = { openGoogleHistory() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(15.dp)) {
                                     Icon(Icons.Default.OpenInNew, null)
@@ -117,19 +174,42 @@ fun PriceHistoryScreen(viewModel: PricePilotViewModel, onBack: () -> Unit) {
                     }
                 }
                 item {
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (dropping) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(22.dp)) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = if (dropping) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(22.dp)
+                    ) {
                         Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(if (dropping) Icons.Default.TrendingDown else Icons.Default.TrendingUp, null, tint = MaterialTheme.colorScheme.primary)
-                            Column { Text(if (hasActualHistory) if (dropping) "Price is trending down" else "Price trend is not clearly falling" else "Estimated price direction", fontWeight = FontWeight.ExtraBold); Spacer(Modifier.height(4.dp)); Text(prediction, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            Column {
+                                Text(if (hasActualHistory) if (dropping) "Price is trending down" else "Price trend is not clearly falling" else "Estimated price direction", fontWeight = FontWeight.ExtraBold)
+                                Spacer(Modifier.height(4.dp))
+                                Text(prediction, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Row(Modifier.fillMaxWidth().padding(17.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Text("Buy timing", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(3.dp))
+                                Text("Based on current price vs. selected history", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(buyScore, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
                 if (hasActualHistory) {
                     item { Text("Recorded timeline", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold) }
-                    items(actualPoints) { point ->
+                    items(visiblePoints) { point ->
                         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
                             Row(Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column { Text(point.date, fontWeight = FontWeight.Bold); Text(point.storeName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                Column {
+                                    Text(point.date, fontWeight = FontWeight.Bold)
+                                    Text(point.storeName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                                 Text("₹${formatAmount(point.price)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                             }
                         }

@@ -85,7 +85,7 @@ fun HomeScreen(viewModel: PricePilotViewModel, onNavigateToResults: () -> Unit, 
 
 @Composable
 private fun PremiumNavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(Modifier.width(72.dp).clickable(onClick = onClick), color = Color.Transparent, contentColor = if (selected) PremiumDesign.Purple else PremiumDesign.Muted) {
+    Surface(onClick = onClick, modifier = Modifier.width(72.dp), color = Color.Transparent, contentColor = if (selected) PremiumDesign.Purple else PremiumDesign.Muted) {
         Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Box(Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) PremiumDesign.PurpleSoft else Color.Transparent), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = label) }; Text(label, style = MaterialTheme.typography.labelSmall) }
     }
 }

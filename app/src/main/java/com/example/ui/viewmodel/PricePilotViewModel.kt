@@ -49,24 +49,27 @@ class PricePilotViewModel(application: Application) : AndroidViewModel(applicati
     private val _notificationsEnabled = MutableStateFlow(true)
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
 
+    fun selectProduct(product: ProductDetails) {
+        // Selecting an already-loaded result must never hit the network again.
+        // This keeps the comparison list in memory while navigating to details/history and back.
+        _currentComparison.value = product
+        _errorMessage.value = null
+    }
+
     fun compareProduct(queryOrUrl: String, selectedStores: Set<String> = emptySet()) {
         if (queryOrUrl.isBlank()) { _errorMessage.value = "Please enter a valid product name or link."; return }
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                // Keep listings even when price/availability is missing. A comparison should show
-                // where the product was found and clearly label unavailable prices instead of dropping it.
                 val products = fetchLiveProducts(queryOrUrl.trim())
                 val filteredProducts = if (selectedStores.isEmpty()) products else products.filter { canonicalStoreName(it.storeName, it.productUrl).equalsAny(selectedStores) }
                 if (filteredProducts.isEmpty()) error("No store listing was returned for this search")
                 val grouped = groupProducts(filteredProducts)
                 val product = grouped.maxByOrNull { it.offers.size } ?: error("No matching product listing was returned")
-                _currentComparison.value = product
+                selectProduct(product)
                 val cheapest = product.offers.filter { it.currentPrice > 0 }.minByOrNull { it.currentPrice }
-                if (cheapest != null) {
-                    localRepository.addRecent(queryOrUrl, product.title, cheapest.currentPrice, cheapest.storeName, product.imageUrl)
-                }
+                if (cheapest != null) localRepository.addRecent(queryOrUrl, product.title, cheapest.currentPrice, cheapest.storeName, product.imageUrl)
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Couldn't load product listings. Please try again."
                 _currentComparison.value = null

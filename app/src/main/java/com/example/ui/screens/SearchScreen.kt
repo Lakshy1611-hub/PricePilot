@@ -132,14 +132,18 @@ fun SearchScreen(viewModel: PricePilotViewModel, onNavigateHome: () -> Unit, onN
                     }
                 }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp) {
                     itemsIndexed(visibleResults) { index, pair ->
                         val product = pair.first
                         val matchingOffers = pair.second
                         AnimatedVisibility(visible = true, enter = fadeIn(tween(300, index * 45)) + scaleIn(tween(300, index * 45))) {
                             val available = matchingOffers.filter { it.currentPrice > 0 && !it.availability.equals("Out of Stock", true) }
                             val best = available.minByOrNull { it.currentPrice } ?: matchingOffers.firstOrNull { it.currentPrice > 0 }
-                            Card(Modifier.fillMaxWidth().clickable { viewModel.compareProduct(product.title, selectedStores); onNavigateResults() }, shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(4.dp)) {
+                            Card(Modifier.fillMaxWidth().clickable {
+                                // Reuse the already-loaded product object; do NOT call the network again.
+                                viewModel.selectProduct(product)
+                                onNavigateResults()
+                            }, shape = RoundedCornerShape(22.dp), elevation = CardDefaults.cardElevation(4.dp)) {
                                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                                     AsyncImage(product.imageUrl, product.title, Modifier.size(82.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
                                     Spacer(Modifier.width(14.dp))

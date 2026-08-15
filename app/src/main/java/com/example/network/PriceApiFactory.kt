@@ -10,10 +10,15 @@ object PriceApiFactory {
         val baseUrl = BuildConfig.PRICE_API_BASE_URL.trimEnd('/') + "/"
         require(baseUrl.startsWith("https://")) { "PRICE_API_BASE_URL must use HTTPS" }
 
+        // Product search should fail fast instead of leaving the UI spinning for ~45s.
+        // The backend can still return results normally, while transient/unavailable
+        // providers surface a retryable error to the app.
         val client = OkHttpClient.Builder()
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(18, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
 
         return Retrofit.Builder()

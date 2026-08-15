@@ -54,7 +54,7 @@ fun HomeScreen(viewModel: PricePilotViewModel, onNavigateToResults: () -> Unit, 
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text("Hello, Lakshy 👋", fontWeight = FontWeight.ExtraBold, color = PremiumDesign.Ink, style = MaterialTheme.typography.titleLarge); Text("Find the best deals for you", color = PremiumDesign.Muted, style = MaterialTheme.typography.bodySmall) }
-                    Surface(Modifier.size(46.dp), shape = CircleShape, color = PremiumDesign.PurpleSoft, onClick = onNavigateToAi) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoAwesome, "AI Shopping", tint = PremiumDesign.Purple) } }
+                    Box(Modifier.size(46.dp).clip(CircleShape).background(PremiumDesign.PurpleSoft).clickable(onClick = onNavigateToAi), contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoAwesome, "AI Shopping", tint = PremiumDesign.Purple) }
                 }
                 Spacer(Modifier.height(16.dp))
                 Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = PremiumDesign.Surface, shadowElevation = 3.dp) {
@@ -85,8 +85,15 @@ fun HomeScreen(viewModel: PricePilotViewModel, onNavigateToResults: () -> Unit, 
 
 @Composable
 private fun PremiumNavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, modifier = Modifier.width(72.dp), color = Color.Transparent, contentColor = if (selected) PremiumDesign.Purple else PremiumDesign.Muted) {
-        Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Box(Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) PremiumDesign.PurpleSoft else Color.Transparent), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = label) }; Text(label, style = MaterialTheme.typography.labelSmall) }
+    Column(
+        Modifier.width(72.dp).clickable(onClick = onClick).padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) PremiumDesign.PurpleSoft else Color.Transparent),
+            contentAlignment = Alignment.Center
+        ) { Icon(icon, contentDescription = label, tint = if (selected) PremiumDesign.Purple else PremiumDesign.Muted) }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) PremiumDesign.Purple else PremiumDesign.Muted)
     }
 }
 
